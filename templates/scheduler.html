@@ -5,85 +5,646 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TrendRadar 调度器</title>
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 24px; background: #f6f7f9; color: #1f2937; }
-    .card { max-width: 720px; margin: 0 auto; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
-    h1 { font-size: 20px; margin: 0 0 12px; }
-    .muted { color: #6b7280; font-size: 14px; margin-bottom: 16px; }
-    .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-    .group { margin: 12px 0; }
-    label { font-size: 14px; }
-    .radio { margin-right: 10px; }
-    input[type="number"] { width: 120px; padding: 8px; border: 1px solid #d1d5db; border-radius: 8px; }
-    button { appearance: none; border: 1px solid #d1d5db; background: #f9fafb; color: #111827; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 14px; }
-    button.primary { background: #4f46e5; color: #fff; border-color: #4338ca; }
-    button.danger { background: #ef4444; color: #fff; border-color: #dc2626; }
-    button:disabled { opacity: 0.6; cursor: not-allowed; }
-    .kv { display: grid; grid-template-columns: 120px 1fr; gap: 6px 12px; margin: 14px 0; }
-    .k { color: #6b7280; }
-    .v { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-    a { color: #2563eb; text-decoration: none; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #ebe8e1;
+      min-height: 100vh;
+      padding: 24px;
+      color: #1a1a1a;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      animation: fadeInUp 0.5s ease-out;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .header h1 {
+      font-size: 36px;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 8px;
+    }
+
+    .header .subtitle {
+      color: #666;
+      font-size: 15px;
+      font-weight: 400;
+    }
+
+    .card {
+      background: #fff;
+      border: 4px solid #1a1a1a;
+      border-radius: 24px;
+      padding: 28px;
+      margin-bottom: 20px;
+      transition: all 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: #1a1a1a;
+    }
+
+    .section {
+      margin-bottom: 24px;
+      padding-bottom: 24px;
+      border-bottom: 2px solid #e5e5e5;
+    }
+
+    .section:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .radio-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .radio-label {
+      display: inline-flex;
+      align-items: center;
+      padding: 10px 20px;
+      background: #fff;
+      border: 3px solid #1a1a1a;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .radio-label:hover {
+      transform: translateY(-1px);
+    }
+
+    .radio-label input[type="radio"] {
+      display: none;
+    }
+
+    .radio-label:has(input:checked) {
+      background: #ffeb99;
+      border-color: #1a1a1a;
+    }
+
+    .input-group {
+      margin-bottom: 16px;
+    }
+
+    .input-label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 12px 16px;
+      border: 3px solid #1a1a1a;
+      border-radius: 14px;
+      font-size: 14px;
+      transition: all 0.15s ease;
+      background: #fff;
+      font-weight: 500;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus {
+      outline: none;
+      background: #fff9e6;
+    }
+
+    input[type="number"] {
+      width: 160px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    button {
+      padding: 12px 28px;
+      border: 3px solid #1a1a1a;
+      border-radius: 16px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    button.primary {
+      background: #ffeb99;
+      color: #1a1a1a;
+    }
+
+    button.danger {
+      background: #ff9999;
+      color: #1a1a1a;
+    }
+
+    button.secondary {
+      background: #99ccff;
+      color: #1a1a1a;
+    }
+
+    button.success {
+      background: #99ff99;
+      color: #1a1a1a;
+    }
+
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .stats-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      flex: 1;
+      min-width: 140px;
+      background: #fff;
+      border: 3px solid #1a1a1a;
+      border-radius: 16px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 6px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-value {
+      font-size: 22px;
+      color: #1a1a1a;
+      font-weight: 700;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .status-item {
+      background: #f8f8f8;
+      padding: 14px;
+      border-radius: 14px;
+      border: 2px solid #e0e0e0;
+    }
+
+    .status-label {
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 6px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-value {
+      font-size: 14px;
+      color: #1a1a1a;
+      font-weight: 600;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+      word-break: break-all;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 700;
+      border: 3px solid #1a1a1a;
+    }
+
+    .status-badge.active {
+      background: #99ff99;
+      color: #1a1a1a;
+    }
+
+    .status-badge.inactive {
+      background: #e0e0e0;
+      color: #666;
+    }
+
+    .status-badge .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .status-badge.active .dot {
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .next-run-banner {
+      background: #99ff99;
+      border: 4px solid #1a1a1a;
+      border-radius: 20px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .next-run-banner .icon {
+      font-size: 36px;
+    }
+
+    .next-run-banner .content {
+      flex: 1;
+    }
+
+    .next-run-banner .label {
+      font-size: 12px;
+      color: #1a1a1a;
+      font-weight: 700;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .next-run-banner .time {
+      font-size: 20px;
+      color: #1a1a1a;
+      font-weight: 700;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+    }
+
+    .checkbox-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      padding: 10px 16px;
+      background: #f8f8f8;
+      border: 2px solid #1a1a1a;
+      border-radius: 12px;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+
+    .checkbox-label:hover {
+      background: #fff;
+    }
+
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      accent-color: #1a1a1a;
+    }
+
+    .log-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      color: #1a1a1a;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 14px;
+      padding: 16px 20px;
+      background: #99ccff;
+      border: 3px solid #1a1a1a;
+      border-radius: 16px;
+      transition: all 0.15s ease;
+    }
+
+    .log-link:hover {
+      transform: translateY(-2px);
+    }
+
+    .hint-text {
+      font-size: 12px;
+      color: #666;
+      margin-top: 8px;
+      font-weight: 500;
+    }
+
+    .sidebar-buttons {
+      position: fixed;
+      left: 24px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .icon-button {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      border: 3px solid #1a1a1a;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .icon-button:hover {
+      transform: scale(1.05);
+    }
+
+    .icon-button.primary {
+      background: #99ddff;
+    }
+
+    .icon-button.secondary {
+      background: #ffeb99;
+    }
+
+    @media (max-width: 768px) {
+      body { padding: 16px; }
+      .header h1 { font-size: 28px; }
+      .card { padding: 20px; }
+      .status-grid { grid-template-columns: 1fr; }
+      .button-group { flex-direction: column; width: 100%; }
+      button { width: 100%; }
+      .sidebar-buttons { display: none; }
+      .stats-row { flex-direction: column; }
+    }
   </style>
   <script>
     function onPresetChange(value) {
       const custom = document.getElementById('custom_minutes');
-      custom.disabled = (value !== 'custom');
+      if (custom) custom.disabled = (value !== 'custom');
+    }
+    function onModeChange(value) {
+      const intervalBox = document.getElementById('interval_box');
+      const timesBox = document.getElementById('times_box');
+      if (value === 'interval') {
+        intervalBox.style.display = 'block';
+        timesBox.style.display = 'none';
+      } else {
+        intervalBox.style.display = 'none';
+        timesBox.style.display = 'block';
+      }
     }
   </script>
-  </head>
-  <body>
-    <div class="card">
+</head>
+<body>
+  <!-- 侧边栏图标按钮 -->
+  <div class="sidebar-buttons">
+    <div class="icon-button primary">📊</div>
+    <div class="icon-button secondary">➕</div>
+  </div>
+
+  <div class="container">
+    <div class="header">
       <h1>TrendRadar 调度器</h1>
-      <div class="muted">选择运行频率（默认：每 1 小时）。也可立即运行一次。</div>
+      <div class="subtitle">智能新闻监控 · 定时任务管理</div>
+    </div>
 
-      <div class="group">
-        <form method="post" action="/schedule">
-          <div class="row">
-            <label><input class="radio" type="radio" name="preset" value="60" onclick="onPresetChange('60')" checked>每 1 小时</label>
-            <label><input class="radio" type="radio" name="preset" value="30" onclick="onPresetChange('30')">每 30 分钟</label>
-            <label><input class="radio" type="radio" name="preset" value="custom" onclick="onPresetChange('custom')">自定义（分钟）</label>
-            <input id="custom_minutes" type="number" name="custom_minutes" min="1" placeholder="例如 15" disabled>
-            <button class="primary" type="submit">开始/更新定时</button>
-          </div>
-          <div class="row" style="margin-top:8px;">
-            <label><input type="checkbox" name="run_immediately" value="1"> 保存并立即运行</label>
-          </div>
-        </form>
-      </div>
-
-      <div class="group">
-        <form method="post" action="/stop" style="display:inline-block; margin-right:8px;">
-          <button class="danger" type="submit">停止定时</button>
-        </form>
-        <form method="post" action="/run-once" style="display:inline-block;">
-          <button type="submit">立即运行一次</button>
-        </form>
-      </div>
-
-      <div class="group">
-        <div class="kv">
-          <div class="k">下次运行</div>
-          <div class="v">{{ next_run or '未设置' }}</div>
-
-          <div class="k">当前间隔</div>
-          <div class="v">{{ (state.interval_minutes ~ ' 分钟') if state.interval_minutes else '未设置' }}</div>
-
-          <div class="k">正在运行</div>
-          <div class="v">{{ '是' if state.running else '否' }}</div>
-
-          <div class="k">上次开始</div>
-          <div class="v">{{ state.last_start or '-' }}</div>
-
-          <div class="k">上次结束</div>
-          <div class="v">{{ state.last_end or '-' }}</div>
-
-          <div class="k">退出码</div>
-          <div class="v">{{ state.last_returncode if state.last_returncode is not none else '-' }}</div>
-        </div>
-      </div>
-
-      <div class="group">
-        <a href="/log" target="_blank">查看运行日志（尾部）</a>
+    <!-- 下次运行时间横幅 -->
+    {% if next_run %}
+    <div class="next-run-banner">
+      <div class="icon">⏰</div>
+      <div class="content">
+        <div class="label">下次运行时间</div>
+        <div class="time">{{ next_run }}</div>
       </div>
     </div>
-  </body>
+    {% endif %}
+
+    <!-- 运行状态徽章 -->
+    <div style="margin-bottom: 20px; text-align: center;">
+      <span class="status-badge {% if state.running %}active{% else %}inactive{% endif %}">
+        <span class="dot"></span>
+        <span>{% if state.running %}运行中{% else %}空闲{% endif %}</span>
+      </span>
+    </div>
+
+    <!-- 调度配置卡片 -->
+    <div class="card">
+      <div class="card-title">⚙️ 调度配置</div>
+
+      <form method="post" action="/schedule">
+        <div class="section">
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="mode" value="times" onclick="onModeChange('times')" {% if not state.schedule_mode or state.schedule_mode == 'times' %}checked{% endif %}>
+              <span>📅 每日固定时刻</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="mode" value="interval" onclick="onModeChange('interval')" {% if state.schedule_mode == 'interval' %}checked{% endif %}>
+              <span>⏱️ 固定间隔运行</span>
+            </label>
+          </div>
+
+          <!-- 固定时刻模式 -->
+          <div id="times_box" class="input-group" style="{% if state.schedule_mode == 'interval' %}display:none;{% endif %}">
+            <label class="input-label">运行时刻</label>
+            <input type="text" name="time_points"
+                   placeholder="例如：00:00, 06:30, 12:00 或 6-21"
+                   value="{% if state.time_points and state.time_points[0] != '每小时整点' %}{{ state.time_points | join(', ') }}{% endif %}">
+            <div class="hint-text">💡 留空则默认每小时整点运行</div>
+          </div>
+
+          <!-- 固定间隔模式 -->
+          <div id="interval_box" style="{% if not state.schedule_mode or state.schedule_mode == 'times' %}display:none;{% endif %}">
+            <div class="radio-group">
+              <label class="radio-label">
+                <input type="radio" name="preset" value="60" onclick="onPresetChange('60')"
+                       {% if not state.interval_minutes or state.interval_minutes == 60 %}checked{% endif %}>
+                <span>每 1 小时</span>
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="preset" value="30" onclick="onPresetChange('30')"
+                       {% if state.interval_minutes == 30 %}checked{% endif %}>
+                <span>每 30 分钟</span>
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="preset" value="custom" onclick="onPresetChange('custom')"
+                       {% if state.interval_minutes and state.interval_minutes != 30 and state.interval_minutes != 60 %}checked{% endif %}>
+                <span>自定义间隔</span>
+              </label>
+            </div>
+            <div class="input-group">
+              <input id="custom_minutes" type="number" name="custom_minutes" min="1" max="1440"
+                     placeholder="输入分钟数"
+                     value="{% if state.interval_minutes and state.interval_minutes != 30 and state.interval_minutes != 60 %}{{ state.interval_minutes }}{% endif %}"
+                     {% if not state.interval_minutes or state.interval_minutes == 30 or state.interval_minutes == 60 %}disabled{% endif %}>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="button-group">
+            <button class="primary" type="submit">
+              <span>💾</span>
+              <span>保存配置</span>
+            </button>
+            <label class="checkbox-label">
+              <input type="checkbox" name="run_immediately" value="1">
+              <span>保存后立即运行</span>
+            </label>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- 快捷操作卡片 -->
+    <div class="card">
+      <div class="card-title">⚡ 快捷操作</div>
+
+      <div class="button-group">
+        <form method="post" action="/run-once" style="display:inline;">
+          <button class="secondary" type="submit" {% if state.running %}disabled{% endif %}>
+            <span>▶️</span>
+            <span>立即运行一次</span>
+          </button>
+        </form>
+
+        <form method="post" action="/stop" style="display:inline;">
+          <button class="danger" type="submit">
+            <span>⏹️</span>
+            <span>停止所有任务</span>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- 运行状态卡片 -->
+    <div class="card">
+      <div class="card-title">📊 运行状态</div>
+
+      <div class="status-grid">
+        <div class="status-item">
+          <div class="status-label">当前模式</div>
+          <div class="status-value">
+            {% if state.schedule_mode == 'interval' %}
+              ⏱️ 固定间隔
+            {% elif state.schedule_mode == 'times' %}
+              📅 固定时刻
+            {% else %}
+              ❌ 未设置
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="status-item">
+          <div class="status-label">计划详情</div>
+          <div class="status-value">
+            {% if state.schedule_mode == 'interval' and state.interval_minutes %}
+              每 {{ state.interval_minutes }} 分钟
+            {% elif state.schedule_mode == 'times' and state.time_points %}
+              {{ state.time_points | join(', ') }}
+            {% else %}
+              -
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="status-item">
+          <div class="status-label">上次开始</div>
+          <div class="status-value">{{ state.last_start or '-' }}</div>
+        </div>
+
+        <div class="status-item">
+          <div class="status-label">上次结束</div>
+          <div class="status-value">{{ state.last_end or '-' }}</div>
+        </div>
+
+        <div class="status-item">
+          <div class="status-label">退出码</div>
+          <div class="status-value">
+            {% if state.last_returncode is not none %}
+              {% if state.last_returncode == 0 %}
+                ✅ {{ state.last_returncode }}
+              {% else %}
+                ❌ {{ state.last_returncode }}
+              {% endif %}
+            {% else %}
+              -
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 日志查看卡片 -->
+    <div class="card">
+      <div class="card-title">📋 日志查看</div>
+      <a href="/log" target="_blank" class="log-link">
+        <span>查看运行日志</span>
+        <span>→</span>
+      </a>
+    </div>
+  </div>
+</body>
 </html>

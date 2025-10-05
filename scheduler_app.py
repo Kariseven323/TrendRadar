@@ -3,11 +3,12 @@ import sys
 import threading
 import subprocess
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 import pytz
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 
 APP_TZ = pytz.timezone("Asia/Shanghai")
@@ -24,6 +25,8 @@ class RunState:
         self.last_end: Optional[datetime] = None
         self.last_returncode: Optional[int] = None
         self.interval_minutes: Optional[int] = None
+        self.schedule_mode: Optional[str] = None  # 'interval' | 'times'
+        self.time_points: Optional[List[str]] = None  # ['08:00','12:30']
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -32,6 +35,8 @@ class RunState:
             "last_end": self._fmt(self.last_end),
             "last_returncode": self.last_returncode,
             "interval_minutes": self.interval_minutes,
+            "schedule_mode": self.schedule_mode,
+            "time_points": self.time_points,
         }
 
     @staticmethod
@@ -92,14 +97,21 @@ def run_trendradar() -> None:
         run_state.last_returncode = returncode
 
 
-def schedule_job(minutes: int) -> None:
+def _remove_all_jobs() -> None:
+    """移除当前应用创建的所有作业（按 ID 前缀匹配）。"""
+    jobs = scheduler.get_jobs()
+    for job in jobs:
+        if job.id == JOB_ID or job.id.startswith(f"{JOB_ID}_"):
+            scheduler.remove_job(job.id)
+
+
+def schedule_interval(minutes: int) -> None:
     """以固定分钟间隔调度任务。"""
-    global scheduler
     if minutes <= 0:
         minutes = 1
 
-    # 替换或新增任务
-    # 常规定时：首次执行为“当前时刻 + 间隔”（不强制立刻运行）
+    _remove_all_jobs()
+    # 首次执行为“当前时刻 + 间隔”（不强制立刻运行）
     scheduler.add_job(
         run_trendradar,
         trigger="interval",
@@ -112,14 +124,110 @@ def schedule_job(minutes: int) -> None:
     )
     with run_state.lock:
         run_state.interval_minutes = minutes
+        run_state.schedule_mode = "interval"
+        run_state.time_points = None
+
+
+def schedule_times(times: List[str]) -> None:
+    """按每日固定时刻列表调度任务。
+
+    - times 形如 ["08:00", "12:30"， ...]
+    - 若列表为空，则默认每小时整点（00 分）
+    """
+    _remove_all_jobs()
+
+    parsed: List[str] = []
+    for t in times:
+        t = t.strip()
+        if not t:
+            continue
+        s = (
+            t.replace("点", "")
+             .replace("－", "-")
+             .replace("—", "-")
+             .replace("–", "-")
+             .strip()
+        )
+
+        # 解析小时范围：如 "6-21" 或 "06-21"（表示每整点）
+        if "-" in s and ":" not in s:
+            try:
+                sh_str, eh_str = s.split("-", 1)
+                sh = int(sh_str)
+                eh = int(eh_str)
+            except Exception:
+                sh = eh = -1
+            if 0 <= sh <= 23 and 0 <= eh <= 23 and sh <= eh:
+                for h in range(sh, eh + 1):
+                    parsed.append(f"{h:02d}:00")
+                continue
+
+        # 解析具体时刻：HH:MM
+        parts = s.split(":")
+        if len(parts) == 2:
+            try:
+                h = int(parts[0])
+                m = int(parts[1])
+            except ValueError:
+                continue
+            if 0 <= h <= 23 and 0 <= m <= 59:
+                parsed.append(f"{h:02d}:{m:02d}")
+
+    # 若无有效时刻，默认每小时整点
+    if not parsed:
+        job = scheduler.add_job(
+            run_trendradar,
+            trigger=CronTrigger(minute=0, second=0, timezone=APP_TZ),
+            id=f"{JOB_ID}_hourly",
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=300,
+            replace_existing=True,
+        )
+        created = [job.id]
+        effective_points = ["每小时整点"]
+    else:
+        created = []
+        effective_points = []
+        # 为避免 hour/minute 笛卡尔积，逐个时刻创建单独 cron 任务
+        for idx, tp in enumerate(sorted(set(parsed))):
+            h, m = [int(x) for x in tp.split(":")]
+            job = scheduler.add_job(
+                run_trendradar,
+                trigger=CronTrigger(hour=h, minute=m, second=0, timezone=APP_TZ),
+                id=f"{JOB_ID}_{idx}",
+                max_instances=1,
+                coalesce=True,
+                misfire_grace_time=300,
+                replace_existing=True,
+            )
+            created.append(job.id)
+            effective_points.append(tp)
+
+    with run_state.lock:
+        run_state.interval_minutes = None
+        run_state.schedule_mode = "times"
+        run_state.time_points = effective_points
 
 
 def remove_job() -> None:
-    job = scheduler.get_job(JOB_ID)
-    if job:
-        scheduler.remove_job(JOB_ID)
+    _remove_all_jobs()
     with run_state.lock:
         run_state.interval_minutes = None
+        run_state.schedule_mode = None
+        run_state.time_points = None
+
+
+def _earliest_next_run_time() -> Optional[datetime]:
+    """获取当前应用作业中最近的下次运行时间。"""
+    next_times = []
+    for job in scheduler.get_jobs():
+        if job.id == JOB_ID or job.id.startswith(f"{JOB_ID}_"):
+            if job.next_run_time:
+                next_times.append(job.next_run_time)
+    if not next_times:
+        return None
+    return min(next_times)
 
 
 def create_app() -> Flask:
@@ -127,8 +235,7 @@ def create_app() -> Flask:
 
     @app.route("/")
     def index():
-        job = scheduler.get_job(JOB_ID)
-        next_run = job.next_run_time if job else None
+        next_run = _earliest_next_run_time()
         next_run_str = (
             next_run.astimezone(APP_TZ).strftime("%Y-%m-%d %H:%M:%S") if next_run else None
         )
@@ -141,21 +248,29 @@ def create_app() -> Flask:
 
     @app.route("/schedule", methods=["POST"])
     def schedule_route():
-        preset = request.form.get("preset", "60")
-        minutes = 60
-        if preset == "60":
-            minutes = 60
-        elif preset == "30":
-            minutes = 30
-        elif preset == "custom":
-            try:
-                minutes = int(request.form.get("custom_minutes", "60"))
-            except Exception:
-                minutes = 60
-            if minutes <= 0:
-                minutes = 1
+        mode = request.form.get("mode", "times")  # 默认固定时刻
 
-        schedule_job(minutes)
+        if mode == "interval":
+            preset = request.form.get("preset", "60")
+            minutes = 60
+            if preset == "60":
+                minutes = 60
+            elif preset == "30":
+                minutes = 30
+            elif preset == "custom":
+                try:
+                    minutes = int(request.form.get("custom_minutes", "60"))
+                except Exception:
+                    minutes = 60
+                if minutes <= 0:
+                    minutes = 1
+            schedule_interval(minutes)
+        else:
+            # 固定时刻，逗号分隔 HH:MM 列表；留空=每小时整点
+            tp_raw = request.form.get("time_points", "").strip()
+            times = [x.strip() for x in tp_raw.split(",") if x.strip()] if tp_raw else []
+            schedule_times(times)
+
         # 可选：保存并立即运行
         run_now = request.form.get("run_immediately") == "1"
         if run_now:
@@ -182,11 +297,13 @@ def create_app() -> Flask:
 
     @app.route("/status")
     def status():
-        job = scheduler.get_job(JOB_ID)
-        next_run = job.next_run_time if job else None
+        next_run = _earliest_next_run_time()
         return jsonify(
             {
-                "job": bool(job),
+                "job": any(
+                    (job.id == JOB_ID or job.id.startswith(f"{JOB_ID}_"))
+                    for job in scheduler.get_jobs()
+                ),
                 "next_run": next_run.astimezone(APP_TZ).strftime("%Y-%m-%d %H:%M:%S")
                 if next_run
                 else None,
@@ -218,6 +335,9 @@ def create_app() -> Flask:
 if __name__ == "__main__":
     # 启动调度器 + Flask 本地服务（仅本机）
     scheduler.start()
+    # 默认：若未配置任何任务，则按“每小时整点”运行
+    if not any((job.id == JOB_ID or job.id.startswith(f"{JOB_ID}_")) for job in scheduler.get_jobs()):
+        schedule_times([])
     app = create_app()
     # 允许通过环境变量覆盖端口
     port = int(os.environ.get("SCHEDULER_PORT", "5001"))
