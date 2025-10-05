@@ -1,0 +1,1 @@
+TrendRadar：热点新闻聚合与分析，按配置抓取各平台热点（经远端 News API），基于频率词/过滤词和权重规则统计并生成 HTML/TXT 报告，同时通过多渠道（飞书/钉钉/企业微信/Telegram/邮件/ntfy）推送，支持 daily/current/incremental 三种模式；可本地、Docker（supercronic 定时）和 GitHub Actions 定时运行。

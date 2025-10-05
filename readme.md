@@ -422,6 +422,27 @@ weight:
 
 </details>
 
+
+## 🖥️ 本地调度器（带前端）
+
+无需额外服务即可在本机用网页配置运行频率：
+
+- 预设：每 1 小时 / 每 30 分钟
+- 自定义：任意分钟数（>=1）
+- 控制：开始/停止定时、立即运行一次
+- 可视：下次运行时间、上次开始/结束、退出码与运行中状态
+
+快速开始：
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python scheduler_app.py
+# 访问 http://127.0.0.1:5001
+```
+
+更多说明见：docs/scheduler.md
+
 ### **多渠道实时推送**
 
 支持**企业微信**(+ 微信推送方案)、**飞书**、**钉钉**、**Telegram**、**邮件**、**ntfy**，消息直达手机和邮箱

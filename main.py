@@ -54,7 +54,7 @@ SMTP_CONFIGS = {
 # === 配置管理 ===
 def load_config():
     """加载配置文件"""
-    config_path = os.environ.get("CONFIG_PATH", "config/config.yaml")
+    config_path = os.environ.get("CONFIG_PATH", "config/config-dev.yaml")
 
     if not Path(config_path).exists():
         raise FileNotFoundError(f"配置文件 {config_path} 不存在")

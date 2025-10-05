@@ -1,0 +1,1 @@
+Python 遵循 PEP 8，4 空格缩进，snake_case/CapWords，f-string；函数尽量纯，增加类型注解；更改配置键需同步 readme 与示例；不提交 output/ 与密钥。

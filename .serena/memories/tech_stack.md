@@ -1,0 +1,1 @@
+Python 3.9+；依赖 requests、PyYAML、pytz、smtplib（内置）等。容器化使用 Python 3.10-slim + supercronic 实现定时；CI 使用 GitHub Actions（crawler.yml 定时运行，docker.yml 构建多架构镜像）。配置文件 YAML + 环境变量合并。输出 HTML/TXT。
