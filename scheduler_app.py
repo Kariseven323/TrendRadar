@@ -43,7 +43,8 @@ class RunState:
 
 
 run_state = RunState()
-scheduler = BackgroundScheduler()
+# 统一为北京时间，确保 next_run_time 与页面展示一致
+scheduler = BackgroundScheduler(timezone=APP_TZ)
 
 
 def ensure_log_dir() -> None:
@@ -98,6 +99,7 @@ def schedule_job(minutes: int) -> None:
         minutes = 1
 
     # 替换或新增任务
+    # 常规定时：首次执行为“当前时刻 + 间隔”（不强制立刻运行）
     scheduler.add_job(
         run_trendradar,
         trigger="interval",
@@ -154,6 +156,14 @@ def create_app() -> Flask:
                 minutes = 1
 
         schedule_job(minutes)
+        # 可选：保存并立即运行
+        run_now = request.form.get("run_immediately") == "1"
+        if run_now:
+            with run_state.lock:
+                already_running = run_state.running
+            if not already_running:
+                t = threading.Thread(target=run_trendradar, daemon=True)
+                t.start()
         return redirect(url_for("index"))
 
     @app.route("/stop", methods=["POST"])
@@ -212,4 +222,3 @@ if __name__ == "__main__":
     # 允许通过环境变量覆盖端口
     port = int(os.environ.get("SCHEDULER_PORT", "5001"))
     app.run(host="127.0.0.1", port=port, debug=False)
-

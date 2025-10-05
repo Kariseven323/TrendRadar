@@ -27,5 +27,7 @@ SCHEDULER_PORT=5100 python scheduler_app.py
 
 打开浏览器访问本地地址，选择频率后点击“开始/更新定时”。
 
-> 提示：调度器通过 `sys.executable main.py` 运行当前仓库的入口，不修改原有逻辑，`max_instances=1` 保证不重入，`coalesce=True` 避免堆积。
+- 如需保存后立刻执行一次，请勾选“保存并立即运行”。
+- 未勾选时，将按所选间隔从下一个周期开始运行。
 
+> 提示：调度器通过 `sys.executable main.py` 运行当前仓库的入口，不修改原有逻辑，`max_instances=1` 保证不重入，`coalesce=True` 避免堆积。
